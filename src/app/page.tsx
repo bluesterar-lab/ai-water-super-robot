@@ -73,36 +73,7 @@ export default function WaterNewsRobotPage() {
   };
 
   // 测试邮件发送
-  const handleTestEmail = async () => {
-    setLoading(true);
-    setError(null);
-    setResult(null);
 
-    try {
-      const response = await fetch('/api/test-resend', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setResult({
-          type: 'email-test',
-          ...data,
-        });
-      } else {
-        const errorDetails = data.details ? JSON.stringify(data.details, null, 2) : '';
-        setError(`${data.error || '操作失败'}\n\n详细信息:\n${errorDetails}`);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '网络错误');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-indigo-50 dark:from-gray-900 dark:via-blue-950 dark:to-gray-900">
@@ -201,7 +172,33 @@ export default function WaterNewsRobotPage() {
             </CardHeader>
             <CardContent>
               <Button
-                onClick={handleTestEmail}
+                onClick={async () => {
+                  setLoading(true);
+                  setError(null);
+                  setResult(null);
+                  try {
+                    const response = await fetch('/api/test-resend', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                      setResult({
+                        type: 'email-test',
+                        ...data,
+                      });
+                    } else {
+                      const errorDetails = data.details ? JSON.stringify(data.details, null, 2) : '';
+                      setError(`${data.error || '操作失败'}\n\n详细信息:\n${errorDetails}`);
+                    }
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : '网络错误');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
                 disabled={loading}
                 className="w-full bg-orange-600 hover:bg-orange-700"
               >
