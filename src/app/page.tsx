@@ -41,6 +41,37 @@ export default function WaterNewsRobotPage() {
     }
   };
 
+  const handleTestEmail = async () => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await fetch('/api/test-resend', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setResult({
+          type: 'email-test',
+          ...data,
+        });
+      } else {
+        const errorDetails = data.details ? JSON.stringify(data.details, null, 2) : '';
+        setError(`${data.error || '操作失败'}\n\n详细信息:\n${errorDetails}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '网络错误');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSearchOnly = async () => {
     setLoading(true);
     setError(null);
@@ -63,6 +94,37 @@ export default function WaterNewsRobotPage() {
         });
       } else {
         setError(data.error || '搜索失败');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '网络错误');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await fetch('/api/test-resend', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setResult({
+          type: 'email-test',
+          ...data,
+        });
+      } else {
+        const errorDetails = data.details ? JSON.stringify(data.details, null, 2) : '';
+        setError(`${data.error || '操作失败'}\n\n详细信息:\n${errorDetails}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '网络错误');
@@ -152,6 +214,37 @@ export default function WaterNewsRobotPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <Card className="border-orange-200 dark:border-orange-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-orange-600" />
+                测试邮件发送
+              </CardTitle>
+              <CardDescription>
+                仅测试 Resend API 是否正常工作
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={handleTestEmail}
+                disabled={loading}
+                className="w-full bg-orange-600 hover:bg-orange-700"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    发送测试中...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    发送测试邮件
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* 结果展示区 */}
@@ -191,7 +284,23 @@ export default function WaterNewsRobotPage() {
                 </div>
               </div>
 
-              {result.results && result.results.length > 0 && (
+              {result.type === 'email-test' ? (
+                <>
+                  <Separator />
+                  <div>
+                    <h3 className="font-semibold text-lg mb-4">邮件测试结果</h3>
+                    <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                      <p className="text-sm mb-2">✅ 测试邮件发送成功！</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        Message ID: {result.messageId}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        请检查 bluesterar@gmail.com 邮箱
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : result.results && result.results.length > 0 && (
                 <>
                   <Separator />
                   <div>
