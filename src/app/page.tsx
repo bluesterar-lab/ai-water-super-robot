@@ -12,6 +12,7 @@ export default function WaterNewsRobotPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // 搜索并发送邮件
   const handleSearchAndSend = async () => {
     setLoading(true);
     setError(null);
@@ -22,7 +23,6 @@ export default function WaterNewsRobotPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || 'test-secret'}`,
         },
       });
 
@@ -41,6 +41,7 @@ export default function WaterNewsRobotPage() {
     }
   };
 
+  // 仅搜索，不发送邮件
   const handleSearchOnly = async () => {
     setLoading(true);
     setError(null);
@@ -71,6 +72,7 @@ export default function WaterNewsRobotPage() {
     }
   };
 
+  // 测试邮件发送
   const handleTestEmail = async () => {
     setLoading(true);
     setError(null);
@@ -121,7 +123,8 @@ export default function WaterNewsRobotPage() {
         </div>
 
         {/* 主要操作区 */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {/* 手动搜索测试 */}
           <Card className="border-blue-200 dark:border-blue-800">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -153,6 +156,7 @@ export default function WaterNewsRobotPage() {
             </CardContent>
           </Card>
 
+          {/* 手动执行完整流程 */}
           <Card className="border-green-200 dark:border-green-800">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -184,6 +188,7 @@ export default function WaterNewsRobotPage() {
             </CardContent>
           </Card>
 
+          {/* 测试邮件发送 */}
           <Card className="border-orange-200 dark:border-orange-800">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -227,22 +232,39 @@ export default function WaterNewsRobotPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">
-                    {result.newsCount || result.count || 0}
+                {result.newsCount !== undefined && (
+                  <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">
+                      {result.newsCount}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      新闻数量
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    新闻数量
+                )}
+
+                {result.count !== undefined && result.type === 'search-only' && (
+                  <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {result.count}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      搜索结果
+                    </div>
                   </div>
-                </div>
-                <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                  <div className="text-lg font-semibold text-blue-600">
-                    {result.emailMessageId ? '已发送' : '仅搜索'}
+                )}
+
+                {result.type === 'email-test' && (
+                  <div className="text-center p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                    <div className="text-lg font-semibold text-orange-600">
+                      邮件测试成功
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      检查邮箱
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    邮件状态
-                  </div>
-                </div>
+                )}
+
                 <div className="text-center p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
                   <div className="text-lg font-semibold text-purple-600">
                     {result.executedAt || new Date().toLocaleTimeString('zh-CN')}
@@ -253,7 +275,7 @@ export default function WaterNewsRobotPage() {
                 </div>
               </div>
 
-              {result.type === 'email-test' ? (
+              {result.type === 'email-test' && (
                 <>
                   <Separator />
                   <div>
@@ -269,7 +291,9 @@ export default function WaterNewsRobotPage() {
                     </div>
                   </div>
                 </>
-              ) : result.results && result.results.length > 0 && (
+              )}
+
+              {result.results && result.results.length > 0 && (
                 <>
                   <Separator />
                   <div>
@@ -296,7 +320,7 @@ export default function WaterNewsRobotPage() {
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:underline"
                             >
-                              阅读全文
+                              阅读全文 →
                             </a>
                             {item.publishTime && (
                               <>
