@@ -41,37 +41,6 @@ export default function WaterNewsRobotPage() {
     }
   };
 
-  const handleTestEmail = async () => {
-    setLoading(true);
-    setError(null);
-    setResult(null);
-
-    try {
-      const response = await fetch('/api/test-resend', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setResult({
-          type: 'email-test',
-          ...data,
-        });
-      } else {
-        const errorDetails = data.details ? JSON.stringify(data.details, null, 2) : '';
-        setError(`${data.error || '操作失败'}\n\n详细信息:\n${errorDetails}`);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '网络错误');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSearchOnly = async () => {
     setLoading(true);
     setError(null);
