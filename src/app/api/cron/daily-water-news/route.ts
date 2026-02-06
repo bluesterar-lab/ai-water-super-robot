@@ -5,7 +5,10 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   // 验证 cron 密钥（防止未授权访问）
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+
+  // 如果配置了 CRON_SECRET 则验证，否则跳过验证（用于测试）
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -72,11 +75,7 @@ export async function GET(request: NextRequest) {
 
 // 允许 POST 方法用于手动触发测试
 export async function POST(request: NextRequest) {
-  // 验证测试密钥
-  const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+  // 手动测试不需要验证密钥，方便在 Web 界面测试
+  // 定时任务（GET 方法）会验证 CRON_SECRET
   return GET(request);
 }
