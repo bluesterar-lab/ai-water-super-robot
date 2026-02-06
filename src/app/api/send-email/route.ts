@@ -5,9 +5,22 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== Email API Started ===');
+
+    // 检查环境变量
+    const apiKey = process.env.RESEND_API_KEY;
+    console.log('RESEND_API_KEY exists:', !!apiKey);
+    console.log('RESEND_API_KEY length:', apiKey?.length);
+    console.log('RESEND_API_KEY format:', apiKey?.startsWith('re_'));
+
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY is not configured');
+    }
+
     const { newsData } = await request.json();
 
     if (!newsData || !newsData.results || newsData.results.length === 0) {
+      console.error('No news data provided');
       return NextResponse.json({
         success: false,
         error: "No news data provided"
@@ -82,18 +95,30 @@ export async function POST(request: NextRequest) {
     `;
 
     // 发送邮件到第一个邮箱（会自动转发到第二个邮箱）
-    const { data, error } = await resend.emails.send({
+    const emailParams = {
       from: 'AI Water Robot <onboarding@resend.dev>',
       to: ['bluesterar@gmail.com'],
       subject: `🌊 水务每日资讯 - ${new Date().toLocaleDateString('zh-CN')}`,
       html: emailHTML,
+    };
+
+    console.log('Sending email with params:', {
+      from: emailParams.from,
+      to: emailParams.to,
+      subject: emailParams.subject,
+      htmlLength: emailParams.html.length,
     });
 
+    const { data, error } = await resend.emails.send(emailParams);
+
+    console.log('Resend response:', { data, error });
+
     if (error) {
-      console.error("Resend error:", error);
+      console.error("Resend error details:", JSON.stringify(error, null, 2));
       return NextResponse.json({
         success: false,
-        error: error.message
+        error: error.message,
+        details: error
       }, { status: 500 });
     }
 
