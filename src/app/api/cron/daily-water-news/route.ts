@@ -15,13 +15,20 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Starting daily water news job at:', new Date().toISOString());
 
+    // 获取当前请求的 URL 基础部分
+    const baseUrl = request.nextUrl.origin;
+
     // 1. 调用搜索API获取水务新闻
-    const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000'}/api/search-water-news`, {
+    const searchResponse = await fetch(`${baseUrl}/api/search-water-news`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
     });
+
+    if (!searchResponse.ok) {
+      throw new Error(`Search API failed with status ${searchResponse.status}`);
+    }
 
     const searchData = await searchResponse.json();
 
@@ -36,13 +43,17 @@ export async function GET(request: NextRequest) {
     console.log(`Found ${searchData.results.length} news items`);
 
     // 2. 调用邮件发送API发送邮件
-    const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000'}/api/send-email`, {
+    const emailResponse = await fetch(`${baseUrl}/api/send-email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ newsData: searchData }),
     });
+
+    if (!emailResponse.ok) {
+      throw new Error(`Email API failed with status ${emailResponse.status}`);
+    }
 
     const emailData = await emailResponse.json();
 
