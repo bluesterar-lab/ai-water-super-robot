@@ -31,7 +31,8 @@ export default function WaterNewsRobotPage() {
       if (data.success) {
         setResult(data);
       } else {
-        setError(data.error || '操作失败');
+        const errorDetails = data.details ? JSON.stringify(data.details, null, 2) : '';
+        setError(`${data.error || '操作失败'}\n\n详细信息:\n${errorDetails}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '网络错误');
@@ -240,11 +241,13 @@ export default function WaterNewsRobotPage() {
         {error && (
           <Card className="border-2 border-red-200 dark:border-red-800 mb-6">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-3 text-red-600">
-                <AlertCircle className="w-5 h-5" />
-                <div>
+              <div className="flex flex-col gap-3 text-red-600">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5" />
                   <div className="font-semibold">执行失败</div>
-                  <div className="text-sm text-red-500">{error}</div>
+                </div>
+                <div className="text-sm text-red-500 whitespace-pre-wrap font-mono bg-red-50 dark:bg-red-950 p-4 rounded-lg overflow-auto max-h-96">
+                  {error}
                 </div>
               </div>
             </CardContent>
