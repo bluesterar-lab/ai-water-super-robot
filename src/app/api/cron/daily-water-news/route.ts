@@ -32,11 +32,14 @@ export async function GET(request: NextRequest) {
 
     const searchData = await searchResponse.json();
 
+    console.log('Search response:', JSON.stringify(searchData, null, 2));
+
     if (!searchData.success || !searchData.results || searchData.results.length === 0) {
       return NextResponse.json({
         success: false,
         error: "No news found or search failed",
-        searchData
+        searchData,
+        details: searchData.debug || searchData.stack
       }, { status: 500 });
     }
 

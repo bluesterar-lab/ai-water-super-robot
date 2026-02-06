@@ -3,9 +3,13 @@ import { SearchClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== Search Water News API Started ===');
+
     const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
     const config = new Config();
     const client = new SearchClient(config, customHeaders);
+
+    console.log('SearchClient initialized');
 
     // 水务相关关键词
     const keywords = [
@@ -23,13 +27,25 @@ export async function POST(request: NextRequest) {
       "water management AI model"
     ];
 
+    console.log(`Starting search with ${keywords.length} keywords`);
+
     const allResults = [];
+    let searchErrors = [];
 
     // 搜索每个关键词
-    for (const keyword of keywords) {
+    for (let i = 0; i < keywords.length; i++) {
+      const keyword = keywords[i];
+      console.log(`[${i + 1}/${keywords.length}] Searching for: "${keyword}"`);
+
       try {
         const response = await client.webSearch(keyword, 5, true);
-        
+
+        console.log(`  Response for "${keyword}":`, {
+          hasWebItems: !!response.web_items,
+          itemCount: response.web_items?.length || 0,
+          hasSummary: !!response.summary
+        });
+
         if (response.web_items && response.web_items.length > 0) {
           const results = response.web_items.map((item) => ({
             title: item.title,
@@ -40,12 +56,18 @@ export async function POST(request: NextRequest) {
             keyword: keyword
           }));
           allResults.push(...results);
+          console.log(`  ✓ Found ${results.length} results for "${keyword}"`);
+        } else {
+          console.log(`  ✗ No results for "${keyword}"`);
         }
       } catch (error) {
-        console.error(`Error searching for "${keyword}":`, error);
-        // 继续搜索其他关键词
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`✗ Error searching for "${keyword}":`, errorMsg);
+        searchErrors.push({ keyword, error: errorMsg });
       }
     }
+
+    console.log(`Search completed. Total results: ${allResults.length}, Errors: ${searchErrors.length}`);
 
     // 去重（基于URL）
     const uniqueResults = Array.from(
@@ -66,13 +88,21 @@ export async function POST(request: NextRequest) {
       success: true,
       count: limitedResults.length,
       results: limitedResults,
-      searchedAt: new Date().toISOString()
+      searchedAt: new Date().toISOString(),
+      debug: {
+        totalRawResults: uniqueResults.length,
+        searchErrors: searchErrors
+      }
     });
   } catch (error) {
     console.error("Search water news error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
+      error: errorMessage,
+      stack: errorStack
     }, { status: 500 });
   }
 }
