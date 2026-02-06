@@ -11,20 +11,35 @@ export async function POST(request: NextRequest) {
 
     console.log('SearchClient initialized');
 
-    // 水务相关关键词
+    // 水务相关关键词（中文 + 英文）
     const keywords = [
+      // 中文关键词
       "水务系统自动投加",
       "曝气系统优化",
       "二次供水技术",
       "水务分组节能",
       "水务故障诊断",
       "水务系统大模型",
+      "水处理自动化",
+      "污水处理技术",
+
+      // 英文关键词（国际）
       "water treatment automation",
       "aeration system optimization",
       "secondary water supply",
       "water energy efficiency",
       "water system fault diagnosis",
-      "water management AI model"
+      "water management AI model",
+      "smart water management",
+      "wastewater treatment technology",
+      "water distribution system",
+      "smart water meter",
+      "water quality monitoring",
+      "water infrastructure AI",
+      "intelligent water treatment",
+      "digital water management",
+      "water utility analytics",
+      "water network optimization"
     ];
 
     console.log(`Starting search with ${keywords.length} keywords`);
