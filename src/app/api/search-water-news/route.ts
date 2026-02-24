@@ -8,28 +8,41 @@ export async function POST() {
     console.log('=== Search Water News API Started ===');
 
     const allKeywords = [
-      "水务系统自动投加", "曝气系统优化", "二次供水技术", "水务分组节能",
-      "水务故障诊断", "水务系统大模型", "水处理自动化", "污水处理技术",
-      "water treatment automation", "smart water management"
+      "水务系统自动投加", "曝气系统优化", "二次供水技术", "水务节能",
+      "水务故障诊断", "水务大模型", "水处理自动化", "污水处理技术",
+      "water treatment automation", "smart water management",
+      "wastewater innovation", "water distribution AI"
     ];
 
+    // 打乱并随机抽取 6 个词（增加数量以保证新闻充足）
     const shuffled = allKeywords.sort(() => 0.5 - Math.random());
-    const keywordsToSearch = shuffled.slice(0, 4); 
+    const keywordsToSearch = shuffled.slice(0, 6); 
 
     const allResults: any[] = [];
     
-    // 🚨 新增：垃圾信息过滤词库和黑名单站点
-    const spamKeywords = ["彩金", "博彩", "牛牛", "百家乐", "微信充值", "娱乐城", "棋牌", "澳门", "真人", "开户", "代理", "体育", "电竞", "平台"];
-    const spamSites = ["3dm", "游侠", "游戏", "gamersky", "网易大神"]; // 屏蔽常被用来发垃圾贴的游戏/社区平台
+    // 🗑️ 黑名单：垃圾词与不相关站点
+    const spamKeywords = ["彩金", "博彩", "牛牛", "百家乐", "微信充值", "娱乐城", "棋牌", "春晚", "央视", "明星", "饭圈", "游戏"];
+    const spamSites = ["3dm", "游侠", "gamersky", "网易大神", "thepaper.cn"]; 
+
+    // 💧 白名单（核心防御）：新闻中必须包含以下至少一个水务根词汇，否则视为搜索引擎过度联想的跨界新闻
+    const mustHaveWaterWords = ["水", "环保", "治污", "管网", "泵", "净水", "排污", "water", "wastewater", "pump", "pipe", "aeration", "utilities", "aquatic"];
 
     const searchPromises = keywordsToSearch.map(async (keyword) => {
       try {
-        const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keyword + ' when:7d')}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`;
+        // 🚨 核心逻辑 1：判断是中文还是英文
+        const isEnglish = !/[\u4e00-\u9fa5]/.test(keyword);
+        let rssUrl = '';
+
+        if (isEnglish) {
+          // 英文关键词 -> 切换到国际/美国节点，获取纯正海外资讯
+          rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keyword + ' when:7d')}&hl=en-US&gl=US&ceid=US:en`;
+        } else {
+          // 中文关键词 -> 保持中国节点
+          rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keyword + ' when:7d')}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`;
+        }
         
         const response = await fetch(rssUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
           next: { revalidate: 0 } 
         });
 
@@ -46,7 +59,7 @@ export async function POST() {
           const sourceMatch = itemXml.match(/<source[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/source>/i);
           
           const cleanTitle = titleMatch ? titleMatch[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"') : '未知标题';
-          const siteName = sourceMatch ? sourceMatch[1] : '行业资讯';
+          const siteName = sourceMatch ? sourceMatch[1] : (isEnglish ? 'Industry News' : '行业资讯');
           
           return {
             title: cleanTitle,
@@ -54,16 +67,22 @@ export async function POST() {
             snippet: cleanTitle, 
             siteName: siteName,
             publishTime: pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString(),
-            keyword: keyword
+            keyword: keyword,
+            isInternational: isEnglish
           };
         }).filter(item => {
-          // 🚨 核心过滤逻辑：如果标题里包含违禁词，或者来源是黑名单网站，直接抛弃！
           const textToCheck = (item.title + " " + item.siteName).toLowerCase();
+          
+          // 1. 过滤垃圾黑名单
           const hasSpamWord = spamKeywords.some(spam => textToCheck.includes(spam.toLowerCase()));
           const isSpamSite = spamSites.some(site => item.siteName.toLowerCase().includes(site.toLowerCase()));
           
-          return !hasSpamWord && !isSpamSite;
-        }).slice(0, 5); // 过滤干净后，再取前5条
+          // 🚨 核心逻辑 2：强校验是否真的和“水”相关！
+          const hasWaterContext = mustHaveWaterWords.some(waterWord => textToCheck.includes(waterWord));
+          
+          // 只有：没有垃圾词 + 不是垃圾网站 + 确实包含水务字眼，才会被保留
+          return !hasSpamWord && !isSpamSite && hasWaterContext;
+        }).slice(0, 5);
         
         return parsedItems;
       } catch (e) {
