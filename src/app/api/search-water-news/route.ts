@@ -1,68 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SearchClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
+import { SearchClient, Config } from "coze-coding-dev-sdk";
+
+// 强制提升 Vercel 最大执行时间，防止 10 秒超时
+export const maxDuration = 60; 
 
 export async function POST(request: NextRequest) {
   try {
     console.log('=== Search Water News API Started ===');
 
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+    // 1. 直接读取 Vercel 环境变量中的 API Key，解决定时任务 401 无权限的问题
+    const customHeaders = {
+      'Authorization': `Bearer ${process.env.COZE_API_KEY}`
+    };
     const config = new Config();
     const client = new SearchClient(config, customHeaders);
 
-    console.log('SearchClient initialized');
-
-    // 水务相关关键词（中文 + 英文）
-    const keywords = [
-      // 中文关键词
-      "水务系统自动投加",
-      "曝气系统优化",
-      "二次供水技术",
-      "水务分组节能",
-      "水务故障诊断",
-      "水务系统大模型",
-      "水处理自动化",
-      "污水处理技术",
-
-      // 英文关键词（国际）
-      "water treatment automation",
-      "aeration system optimization",
-      "secondary water supply",
-      "water energy efficiency",
-      "water system fault diagnosis",
-      "water management AI model",
-      "smart water management",
-      "wastewater treatment technology",
-      "water distribution system",
-      "smart water meter",
-      "water quality monitoring",
-      "water infrastructure AI",
-      "intelligent water treatment",
-      "digital water management",
-      "water utility analytics",
-      "water network optimization"
+    // 所有需要搜索的关键词
+    const allKeywords = [
+      "水务系统自动投加", "曝气系统优化", "二次供水技术", "水务分组节能",
+      "水务故障诊断", "水务系统大模型", "水处理自动化", "污水处理技术",
+      "water treatment automation", "smart water management"
     ];
 
-    console.log(`Starting search with ${keywords.length} keywords`);
+    // 2. 打乱关键词，每次只随机取 4 个词搜索（彻底解决 Vercel 免费版超时被杀的问题）
+    const shuffled = allKeywords.sort(() => 0.5 - Math.random());
+    const keywordsToSearch = shuffled.slice(0, 4); 
 
     const allResults = [];
-    let searchErrors = [];
-
-    // 搜索每个关键词
-    for (let i = 0; i < keywords.length; i++) {
-      const keyword = keywords[i];
-      console.log(`[${i + 1}/${keywords.length}] Searching for: "${keyword}"`);
-
+    
+    // 3. 并行搜索，大幅缩短运行时间
+    const searchPromises = keywordsToSearch.map(async (keyword) => {
       try {
-        const response = await client.webSearch(keyword, 5, true);
-
-        console.log(`  Response for "${keyword}":`, {
-          hasWebItems: !!response.web_items,
-          itemCount: response.web_items?.length || 0,
-          hasSummary: !!response.summary
-        });
-
+        const response = await client.webSearch(keyword, 4, true);
         if (response.web_items && response.web_items.length > 0) {
-          const results = response.web_items.map((item) => ({
+          return response.web_items.map((item: any) => ({
             title: item.title,
             url: item.url,
             snippet: item.snippet,
@@ -70,54 +41,26 @@ export async function POST(request: NextRequest) {
             publishTime: item.publish_time,
             keyword: keyword
           }));
-          allResults.push(...results);
-          console.log(`  ✓ Found ${results.length} results for "${keyword}"`);
-        } else {
-          console.log(`  ✗ No results for "${keyword}"`);
         }
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`✗ Error searching for "${keyword}":`, errorMsg);
-        searchErrors.push({ keyword, error: errorMsg });
+      } catch (e) {
+        console.error(`Error with ${keyword}:`, e);
       }
-    }
-
-    console.log(`Search completed. Total results: ${allResults.length}, Errors: ${searchErrors.length}`);
-
-    // 去重（基于URL）
-    const uniqueResults = Array.from(
-      new Map(allResults.map(item => [item.url, item])).values()
-    );
-
-    // 按发布时间排序（最新的在前）
-    uniqueResults.sort((a, b) => {
-      const dateA = a.publishTime ? new Date(a.publishTime).getTime() : 0;
-      const dateB = b.publishTime ? new Date(b.publishTime).getTime() : 0;
-      return dateB - dateA;
+      return [];
     });
 
-    // 限制返回数量
-    const limitedResults = uniqueResults.slice(0, 30);
+    const resultsArrays = await Promise.all(searchPromises);
+    resultsArrays.forEach(res => allResults.push(...res));
+
+    // 去重
+    const uniqueResults = Array.from(new Map(allResults.map(item => [item.url, item])).values());
+    const limitedResults = uniqueResults.slice(0, 20); // 限制最多20条，防垃圾邮件
 
     return NextResponse.json({
       success: true,
       count: limitedResults.length,
       results: limitedResults,
-      searchedAt: new Date().toISOString(),
-      debug: {
-        totalRawResults: uniqueResults.length,
-        searchErrors: searchErrors
-      }
     });
   } catch (error) {
-    console.error("Search water news error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const errorStack = error instanceof Error ? error.stack : undefined;
-
-    return NextResponse.json({
-      success: false,
-      error: errorMessage,
-      stack: errorStack
-    }, { status: 500 });
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }
 }
