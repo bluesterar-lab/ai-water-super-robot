@@ -5,10 +5,11 @@ export const dynamic = 'force-dynamic';
 
 export async function POST() {
   try {
-    // 🚨 核心修复 4：补充一些大范围的行业热门词，搭配冷门词一起搜，保证每天都有内容
     const allKeywords = [
-      "智慧水务", "水务集团", "水处理技术", "水污染防治", "二次供水设备",
-      "水务系统自动投加", "曝气系统优化", "水务大模型", "水处理自动化",
+      // 进一步强化技术属性的关键词
+      "水务系统自动投加", "曝气系统优化", "二次供水技术", "水务节能算法",
+      "水务故障诊断", "水务大模型", "水处理自动化", "污水处理前沿技术",
+      "智慧水务AI", "水务数字孪生", "水务物联网", 
       "water treatment automation", "smart water management",
       "wastewater innovation", "water utility AI"
     ];
@@ -18,15 +19,26 @@ export async function POST() {
 
     const allResults: any[] = [];
     
-    const spamKeywords = ["彩金", "博彩", "牛牛", "百家乐", "微信充值", "娱乐城", "棋牌", "春晚", "央视", "明星", "饭圈", "游戏"];
-    const spamSites = ["3dm", "游侠", "gamersky", "网易大神", "thepaper.cn"]; 
+    // 🚨 终极黑名单：不仅防广告，还彻底屏蔽民生、政策、政务会议和招投标！
+    const spamKeywords = [
+      // 广告博彩类
+      "彩金", "博彩", "牛牛", "百家乐", "微信充值", "娱乐城", "棋牌", "春晚", "明星", "游戏",
+      // 政务与政策法规类
+      "政策", "条例", "法规", "补贴", "通知", "公示", "答复", "督导", "考察", "调研", "座谈会", "视察", "领导", "约谈",
+      // 民生与水务服务类
+      "民生", "停水", "水价", "收费", "市民", "居民", "群众", "供水管网改造工程", "抢修",
+      // 商业招投标类
+      "招标", "中标", "采购", "比选", "招标文件"
+    ];
+    
+    const spamSites = ["3dm", "游侠", "gamersky", "网易大神", "thepaper.cn", "gov.cn"]; 
     const mustHaveWaterWords = ["水", "环保", "治污", "管网", "泵", "净水", "排污", "water", "wastewater", "pump", "pipe", "aeration", "utilities", "aquatic"];
 
     const searchPromises = keywordsToSearch.map(async (keyword) => {
       try {
         const isEnglish = !/[\u4e00-\u9fa5]/.test(keyword);
         
-        // 🚨 核心修复 5：将搜索时间范围从 7天(when:7d) 放宽到 14天(when:14d)，保证内容充足
+        // 抓取过去14天的新闻
         const rssUrl = isEnglish 
           ? `https://news.google.com/rss/search?q=${encodeURIComponent(keyword + ' when:14d')}&hl=en-US&gl=US&ceid=US:en` 
           : `https://news.google.com/rss/search?q=${encodeURIComponent(keyword + ' when:14d')}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`;
@@ -63,12 +75,13 @@ export async function POST() {
         }).filter(item => {
           const textToCheck = (item.title + " " + item.siteName).toLowerCase();
           
+          // 如果命中任何黑名单词汇（民生/政策/停水等），直接淘汰
           const hasSpamWord = spamKeywords.some(spam => textToCheck.includes(spam.toLowerCase()));
           const isSpamSite = spamSites.some(site => item.siteName.toLowerCase().includes(site.toLowerCase()));
           const hasWaterContext = mustHaveWaterWords.some(waterWord => textToCheck.includes(waterWord));
           
           return !hasSpamWord && !isSpamSite && hasWaterContext;
-        }).slice(0, 5);
+        }).slice(0, 5); // 每组保留5条纯技术干货
         
         return parsedItems;
       } catch (e) {
